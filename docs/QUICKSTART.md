@@ -102,6 +102,14 @@ meson setup build --buildtype=release
 ninja -C build
 ```
 
+For an install-only local build that skips test targets:
+
+```sh
+meson setup build --buildtype=release -Dxwayland=enabled -Dtests=false
+ninja -C build
+sudo ninja -C build install
+```
+
 Verify everything works:
 
 ```sh
@@ -243,6 +251,12 @@ From an existing Wayland session (GNOME, KDE, Sway, etc.):
 
 ```sh
 WLR_BACKENDS=wayland ./build/fluxland -s foot
+```
+
+After installing, test the installed compositor the same way:
+
+```sh
+WLR_BACKENDS=wayland fluxland -s foot
 ```
 
 This opens fluxland in a window -- ideal for testing without leaving your

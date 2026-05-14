@@ -81,6 +81,12 @@ See [`examples/`](examples/) for styles and complete configuration examples, and
    fluxland
    ```
 
+   For a nested smoke test inside an existing Wayland session:
+
+   ```sh
+   WLR_BACKENDS=wayland fluxland -s foot
+   ```
+
 4. **Essential keybindings:**
 
    | Key | Action |
@@ -178,11 +184,20 @@ To install system-wide:
 sudo ninja -C build install
 ```
 
+For an install-focused build that skips test targets:
+
+```sh
+meson setup build --buildtype=release -Dxwayland=enabled -Dtests=false
+ninja -C build
+sudo ninja -C build install
+```
+
 ### Build options
 
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `xwayland` | feature | auto | Enable XWayland support |
+| `tests` | boolean | true | Build test targets |
 | `asan` | boolean | false | Enable address sanitizer |
 | `ubsan` | boolean | false | Enable undefined behavior sanitizer |
 
