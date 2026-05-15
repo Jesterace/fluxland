@@ -70,6 +70,9 @@ Scan
 .I directory
 for style files and create a menu entry for each one.
 Tilde expansion is supported.
+Multiple
+.B [stylesdir]
+entries may be used in the same menu; entries are appended in order.
 .TP
 .BI [include] " (" path )
 Include another menu file at
@@ -166,6 +169,7 @@ Hovering over a submenu item automatically opens it.
   [end]
   [submenu] (Styles)
     [stylesdir] (~/.config/fluxland/styles)
+    [stylesdir] (/usr/share/fluxland/styles/jesterbox)
   [end]
   [workspaces] (Workspaces)
   [separator]

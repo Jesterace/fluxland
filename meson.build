@@ -392,11 +392,20 @@ install_data(
   install_dir: get_option('datadir') / 'wayland-sessions',
 )
 
+installed_datadir = get_option('prefix') / get_option('datadir')
+menu_conf = configuration_data()
+menu_conf.set('datadir', installed_datadir)
+configured_menu = configure_file(
+  input: 'data/menu.in',
+  output: 'menu',
+  configuration: menu_conf,
+)
+
 example_configs = [
   'data/apps',
   'data/init',
   'data/keys',
-  'data/menu',
+  configured_menu,
   'data/startup',
   'data/style',
   'data/fluxland-hc-dark.style',
@@ -426,6 +435,20 @@ install_subdir(
 install_subdir(
   'examples/styles/upstream',
   install_dir: get_option('datadir') / 'fluxland' / 'styles',
+)
+
+jesterbox_styles = [
+  'contrib/styles/Great-Wave',
+  'contrib/styles/Jesterbox-Amethyst',
+  'contrib/styles/Jesterbox-Blue',
+  'contrib/styles/Jesterbox-Dark',
+  'contrib/styles/Jesterbox-Lava',
+  'contrib/styles/Jesterbox-RetroGreen',
+]
+
+install_data(
+  jesterbox_styles,
+  install_dir: get_option('datadir') / 'fluxland' / 'styles' / 'jesterbox',
 )
 
 # --- Man pages ---
