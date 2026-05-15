@@ -101,6 +101,7 @@ test_valid_init_file(void)
 		"session.screen0.workspaces: 4\n"
 		"session.screen0.focusModel: MouseFocus\n"
 		"session.screen0.toolbar.alpha: 200\n"
+		"session.screen0.toolbar.mode: panel\n"
 		"session.screen0.toolbar.placement: BottomCenter\n"
 		"session.screen0.toolbar.widthPercent: 80\n"
 		"session.screen0.slit.placement: RightCenter\n"

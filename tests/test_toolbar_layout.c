@@ -347,8 +347,14 @@ enum wm_toolbar_placement {
 	WM_TOOLBAR_BOTTOM_RIGHT,
 };
 
+enum wm_toolbar_mode {
+	WM_TOOLBAR_MODE_ORIGINAL,
+	WM_TOOLBAR_MODE_PANEL,
+};
+
 struct wm_config {
 	bool toolbar_visible;
+	enum wm_toolbar_mode toolbar_mode;
 	enum wm_toolbar_placement toolbar_placement;
 	bool toolbar_auto_hide;
 	int toolbar_auto_hide_delay_ms;
@@ -719,6 +725,7 @@ setup_test_server(void)
 	test_style.toolbar_font.size = 10;
 
 	test_config.toolbar_visible = true;
+	test_config.toolbar_mode = WM_TOOLBAR_MODE_ORIGINAL;
 	test_config.toolbar_placement = WM_TOOLBAR_BOTTOM_CENTER;
 	test_config.toolbar_width_percent = 100;
 	test_config.toolbar_height = 24;
@@ -2534,6 +2541,41 @@ test_toolbar_relayout_top_right_placement(void)
 }
 
 static void
+test_toolbar_relayout_panel_mode(void)
+{
+	reset_globals();
+	setup_test_server();
+	test_config.toolbar_tools = "workspacename iconbar clock";
+	test_config.toolbar_mode = WM_TOOLBAR_MODE_PANEL;
+	test_config.toolbar_placement = WM_TOOLBAR_TOP_RIGHT;
+	test_config.toolbar_width_percent = 50;
+
+	struct wm_workspace ws;
+	memset(&ws, 0, sizeof(ws));
+	ws.name = "1";
+	ws.index = 0;
+	wl_list_insert(&test_server.workspaces, &ws.link);
+	test_server.current_workspace = &ws;
+	test_server.workspace_count = 1;
+
+	struct wm_toolbar *toolbar = wm_toolbar_create(&test_server);
+	assert(toolbar != NULL);
+
+	assert(toolbar->x == 0);
+	assert(toolbar->y == 1080 - toolbar->height);
+	assert(toolbar->width == 1920);
+	assert(toolbar->on_top == false);
+	assert(toolbar->ws_name_tool != NULL);
+	assert(toolbar->iconbar_tool != NULL);
+	assert(toolbar->clock_tool != NULL);
+	assert(test_output.usable_area.height == 1080 - toolbar->height);
+
+	wm_toolbar_destroy(toolbar);
+	wl_list_remove(&ws.link);
+	printf("  PASS: toolbar_relayout_panel_mode\n");
+}
+
+static void
 test_toolbar_relayout_auto_hide_toggle(void)
 {
 	reset_globals();
@@ -2817,6 +2859,7 @@ main(void)
 	test_toolbar_render_focus_indicator_hide();
 	test_toolbar_relayout_top_left_placement();
 	test_toolbar_relayout_top_right_placement();
+	test_toolbar_relayout_panel_mode();
 	test_toolbar_relayout_auto_hide_toggle();
 	test_toolbar_update_workspace();
 	test_toolbar_update_iconbar();

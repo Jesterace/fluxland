@@ -56,6 +56,7 @@ test_create_destroy(void)
 	assert(c->edge_snap_threshold == 10);
 	assert(c->placement_policy == WM_PLACEMENT_ROW_SMART);
 	assert(c->toolbar_visible == true);
+	assert(c->toolbar_mode == WM_TOOLBAR_MODE_ORIGINAL);
 	assert(c->toolbar_placement == WM_TOOLBAR_BOTTOM_CENTER);
 	assert(c->toolbar_auto_hide == false);
 	assert(c->toolbar_auto_hide_delay_ms == 500);
@@ -719,6 +720,42 @@ test_all_toolbar_placements(void)
 	config_destroy(c);
 
 	printf("  PASS: test_all_toolbar_placements\n");
+}
+
+/* Test: all toolbar mode variants */
+static void
+test_all_toolbar_modes(void)
+{
+	const struct {
+		const char *value;
+		enum wm_toolbar_mode expected;
+	} cases[] = {
+		{"original", WM_TOOLBAR_MODE_ORIGINAL},
+		{"panel", WM_TOOLBAR_MODE_PANEL},
+		{"PANEL", WM_TOOLBAR_MODE_PANEL},
+	};
+
+	for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+		char buf[256];
+		snprintf(buf, sizeof(buf),
+			"session.screen0.toolbar.mode: %s\n",
+			cases[i].value);
+		write_file(TEST_INIT, buf);
+
+		struct wm_config *c = config_create();
+		config_load(c, TEST_INIT);
+		assert(c->toolbar_mode == cases[i].expected);
+		config_destroy(c);
+	}
+
+	write_file(TEST_INIT,
+		"session.screen0.toolbar.mode: unsupported\n");
+	struct wm_config *c = config_create();
+	config_load(c, TEST_INIT);
+	assert(c->toolbar_mode == WM_TOOLBAR_MODE_ORIGINAL);
+	config_destroy(c);
+
+	printf("  PASS: test_all_toolbar_modes\n");
 }
 
 /* Test: all slit placement variants */
@@ -1520,6 +1557,7 @@ main(void)
 	test_very_long_lines();
 	test_empty_workspace_names();
 	test_all_toolbar_placements();
+	test_all_toolbar_modes();
 	test_all_slit_placements();
 	test_incomplete_struts();
 	test_slit_layer_parsing();

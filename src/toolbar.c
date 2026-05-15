@@ -1333,40 +1333,49 @@ wm_toolbar_relayout(struct wm_toolbar *toolbar)
 	wlr_output_effective_resolution(output->wlr_output,
 		&output_width, &output_height);
 
-	/* Apply width percentage */
-	int width_pct = config ? config->toolbar_width_percent : 100;
-	toolbar->width = output_width * width_pct / 100;
-	if (toolbar->width < 1) toolbar->width = 1;
-
-	/* Determine horizontal position based on placement */
+	bool panel_mode = config &&
+		config->toolbar_mode == WM_TOOLBAR_MODE_PANEL;
 	enum wm_toolbar_placement placement = config ?
 		config->toolbar_placement : WM_TOOLBAR_BOTTOM_CENTER;
 
-	switch (placement) {
-	case WM_TOOLBAR_TOP_LEFT:
-	case WM_TOOLBAR_BOTTOM_LEFT:
+	if (panel_mode) {
+		toolbar->width = output_width;
 		toolbar->x = 0;
-		break;
-	case WM_TOOLBAR_TOP_RIGHT:
-	case WM_TOOLBAR_BOTTOM_RIGHT:
-		toolbar->x = output_width - toolbar->width;
-		break;
-	case WM_TOOLBAR_TOP_CENTER:
-	case WM_TOOLBAR_BOTTOM_CENTER:
-	default:
-		toolbar->x = (output_width - toolbar->width) / 2;
-		break;
-	}
-
-	/* Determine vertical position */
-	toolbar->on_top = (placement == WM_TOOLBAR_TOP_LEFT ||
-		placement == WM_TOOLBAR_TOP_CENTER ||
-		placement == WM_TOOLBAR_TOP_RIGHT);
-
-	if (toolbar->on_top) {
-		toolbar->y = 0;
-	} else {
+		toolbar->on_top = false;
 		toolbar->y = output_height - toolbar->height;
+	} else {
+		/* Apply width percentage */
+		int width_pct = config ? config->toolbar_width_percent : 100;
+		toolbar->width = output_width * width_pct / 100;
+		if (toolbar->width < 1) toolbar->width = 1;
+
+		/* Determine horizontal position based on placement */
+		switch (placement) {
+		case WM_TOOLBAR_TOP_LEFT:
+		case WM_TOOLBAR_BOTTOM_LEFT:
+			toolbar->x = 0;
+			break;
+		case WM_TOOLBAR_TOP_RIGHT:
+		case WM_TOOLBAR_BOTTOM_RIGHT:
+			toolbar->x = output_width - toolbar->width;
+			break;
+		case WM_TOOLBAR_TOP_CENTER:
+		case WM_TOOLBAR_BOTTOM_CENTER:
+		default:
+			toolbar->x = (output_width - toolbar->width) / 2;
+			break;
+		}
+
+		/* Determine vertical position */
+		toolbar->on_top = (placement == WM_TOOLBAR_TOP_LEFT ||
+			placement == WM_TOOLBAR_TOP_CENTER ||
+			placement == WM_TOOLBAR_TOP_RIGHT);
+
+		if (toolbar->on_top) {
+			toolbar->y = 0;
+		} else {
+			toolbar->y = output_height - toolbar->height;
+		}
 	}
 
 	wlr_scene_node_set_position(&toolbar->scene_tree->node,

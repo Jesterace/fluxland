@@ -44,6 +44,11 @@ enum wm_toolbar_placement {
 	WM_TOOLBAR_BOTTOM_RIGHT,
 };
 
+enum wm_toolbar_mode {
+	WM_TOOLBAR_MODE_ORIGINAL,
+	WM_TOOLBAR_MODE_PANEL,
+};
+
 enum wm_menu_search {
 	WM_MENU_SEARCH_NOWHERE,    /* disabled (default) */
 	WM_MENU_SEARCH_ITEMSTART,  /* match from start of item label */
@@ -110,6 +115,7 @@ struct wm_config {
 
 	/* Toolbar */
 	bool toolbar_visible;
+	enum wm_toolbar_mode toolbar_mode;
 	enum wm_toolbar_placement toolbar_placement;
 	bool toolbar_auto_hide;
 	int toolbar_auto_hide_delay_ms;

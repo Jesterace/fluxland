@@ -179,6 +179,11 @@ static const char *valid_toolbar_placements[] = {
 	"BottomLeft", "BottomCenter", "BottomRight", NULL
 };
 
+/* Valid toolbar mode values */
+static const char *valid_toolbar_modes[] = {
+	"original", "panel", NULL
+};
+
 /* Valid iconbar mode values */
 static const char *valid_iconbar_modes[] = {
 	"Workspace", "AllWindows", "Icons", "NoIcons",
@@ -293,6 +298,7 @@ static const struct init_key_spec init_keys[] = {
 
 	/* Toolbar */
 	{"session.screen0.toolbar.visible", VT_BOOL, 0, 0, NULL},
+	{"session.screen0.toolbar.mode", VT_ENUM, 0, 0, valid_toolbar_modes},
 	{"session.screen0.toolbar.placement", VT_ENUM, 0, 0, valid_toolbar_placements},
 	{"session.screen0.toolbar.autoHide", VT_BOOL, 0, 0, NULL},
 	{"session.screen0.toolbar.autoHideDelay", VT_INT, 0, 10000, NULL},

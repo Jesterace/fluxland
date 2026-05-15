@@ -67,6 +67,11 @@ session.screen0.windowPlacement: RowSmartPlacement
 # Show the toolbar
 session.screen0.toolbar.visible: true
 
+# Toolbar mode:
+#   original - current Fluxland toolbar behavior
+#   panel    - full-width bottom desktop panel
+session.screen0.toolbar.mode: original
+
 # Toolbar position:
 #   TopLeft, TopCenter, TopRight,
 #   BottomLeft, BottomCenter, BottomRight
