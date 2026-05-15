@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Jesterbox
+Comment=A Fluxbox-like Wayland desktop session powered by Fluxland
+Exec=@bindir@/jesterbox-session
+Type=Application
+Categories=System;
+Keywords=wayland;compositor;window manager;wlroots;fluxbox;jesterbox;
+DesktopNames=jesterbox

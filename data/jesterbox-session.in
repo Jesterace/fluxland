@@ -1,0 +1,25 @@
+#!/bin/sh
+
+if [ -n "${XDG_CONFIG_HOME:-}" ]; then
+	config_home=$XDG_CONFIG_HOME
+elif [ -n "${HOME:-}" ]; then
+	config_home=$HOME/.config
+else
+	exec @bindir@/fluxland "$@"
+fi
+
+config_dir=$config_home/jesterbox
+template_dir=@datadir@/fluxland/jesterbox
+
+mkdir -p "$config_dir" "$config_dir/styles"
+
+if [ ! -e "$config_dir/init" ] && [ -r "$template_dir/jesterbox-init" ]; then
+	cp "$template_dir/jesterbox-init" "$config_dir/init"
+fi
+
+if [ ! -e "$config_dir/menu" ] && [ -r "$template_dir/jesterbox-menu" ]; then
+	cp "$template_dir/jesterbox-menu" "$config_dir/menu"
+fi
+
+export FLUXLAND_CONFIG_DIR="$config_dir"
+exec "@bindir@/fluxland" "$@"

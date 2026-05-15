@@ -393,12 +393,43 @@ install_data(
 )
 
 installed_datadir = get_option('prefix') / get_option('datadir')
-menu_conf = configuration_data()
-menu_conf.set('datadir', installed_datadir)
+installed_bindir = get_option('prefix') / get_option('bindir')
+install_conf = configuration_data()
+install_conf.set('datadir', installed_datadir)
+install_conf.set('bindir', installed_bindir)
 configured_menu = configure_file(
   input: 'data/menu.in',
   output: 'menu',
-  configuration: menu_conf,
+  configuration: install_conf,
+)
+
+configure_file(
+  input: 'data/jesterbox-session.desktop.in',
+  output: 'jesterbox-session.desktop',
+  configuration: install_conf,
+  install: true,
+  install_dir: get_option('datadir') / 'wayland-sessions',
+)
+
+configure_file(
+  input: 'data/jesterbox-session.in',
+  output: 'jesterbox-session',
+  configuration: install_conf,
+  install: true,
+  install_dir: get_option('bindir'),
+  install_mode: 'rwxr-xr-x',
+)
+
+jesterbox_init = configure_file(
+  input: 'data/jesterbox/init.in',
+  output: 'jesterbox-init',
+  configuration: install_conf,
+)
+
+jesterbox_menu = configure_file(
+  input: 'data/jesterbox/menu.in',
+  output: 'jesterbox-menu',
+  configuration: install_conf,
 )
 
 example_configs = [
@@ -415,6 +446,12 @@ example_configs = [
 install_data(
   example_configs,
   install_dir: get_option('datadir') / 'fluxland' / 'examples',
+)
+
+install_data(
+  jesterbox_init,
+  jesterbox_menu,
+  install_dir: get_option('datadir') / 'fluxland' / 'jesterbox',
 )
 
 # --- Bundled styles (standalone + community + upstream Fluxbox) ---

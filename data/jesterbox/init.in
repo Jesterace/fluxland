@@ -1,0 +1,6 @@
+# Jesterbox defaults for Fluxland.
+# Copied to ~/.config/jesterbox/init by the Jesterbox session wrapper.
+
+session.screen0.toolbar.mode: panel
+session.menuFile: menu
+session.styleFile: @datadir@/fluxland/styles/jesterbox/Jesterbox-Dark
