@@ -420,6 +420,15 @@ configure_file(
   install_mode: 'rwxr-xr-x',
 )
 
+configure_file(
+  input: 'data/jesterbox-about.in',
+  output: 'jesterbox-about',
+  configuration: install_conf,
+  install: true,
+  install_dir: get_option('bindir'),
+  install_mode: 'rwxr-xr-x',
+)
+
 jesterbox_init = configure_file(
   input: 'data/jesterbox/init.in',
   output: 'jesterbox-init',

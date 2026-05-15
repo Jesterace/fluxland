@@ -1,0 +1,49 @@
+#!/bin/sh
+
+title="Jesterbox"
+styles_dir="@datadir@/fluxland/styles/jesterbox"
+message="Jesterbox
+
+A Fluxbox-like Wayland desktop session powered by Fluxland
+
+Config: ~/.config/jesterbox
+Styles: $styles_dir"
+
+if command -v zenity >/dev/null 2>&1; then
+	exec zenity --info --title="$title" --text="$message" --width=520
+fi
+
+if command -v yad >/dev/null 2>&1; then
+	exec yad --info --title="$title" --text="$message" --width=520 --button=OK:0
+fi
+
+if command -v kdialog >/dev/null 2>&1; then
+	exec kdialog --title "$title" --msgbox "$message"
+fi
+
+show_in_terminal() {
+	exec "$@" sh -c '
+		printf "%s\n" "$1"
+		printf "\nPress Enter to close..."
+		read _ || true
+	' sh "$message"
+}
+
+if command -v foot >/dev/null 2>&1; then
+	show_in_terminal foot -T "$title"
+fi
+
+if command -v alacritty >/dev/null 2>&1; then
+	show_in_terminal alacritty --title "$title" -e
+fi
+
+if command -v kitty >/dev/null 2>&1; then
+	show_in_terminal kitty --title "$title"
+fi
+
+if command -v xterm >/dev/null 2>&1; then
+	show_in_terminal xterm -T "$title" -e
+fi
+
+printf "%s\n" "$message" >&2
+exit 1

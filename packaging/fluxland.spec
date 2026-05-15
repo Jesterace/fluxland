@@ -49,6 +49,7 @@ keybindings, window decorations, workspaces, a toolbar, and menus.
 %doc README.md
 %{_bindir}/fluxland
 %{_bindir}/fluxland-ctl
+%{_bindir}/jesterbox-about
 %{_bindir}/jesterbox-session
 %{_datadir}/applications/fluxland.desktop
 %{_datadir}/wayland-sessions/fluxland-session.desktop

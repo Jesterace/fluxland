@@ -57,6 +57,8 @@
   [separator]
 
   [submenu] (Jesterbox)
+    [exec] (About Jesterbox) {jesterbox-about}
+    [separator]
     [reconfig] (Reload Config)
     [restart] (Restart)
     [separator]
