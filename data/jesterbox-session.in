@@ -13,13 +13,18 @@ template_dir=@datadir@/fluxland/jesterbox
 
 mkdir -p "$config_dir" "$config_dir/styles"
 
-if [ ! -e "$config_dir/init" ] && [ -r "$template_dir/jesterbox-init" ]; then
-	cp "$template_dir/jesterbox-init" "$config_dir/init"
-fi
+seed_config() {
+	template=$1
+	target=$2
 
-if [ ! -e "$config_dir/menu" ] && [ -r "$template_dir/jesterbox-menu" ]; then
-	cp "$template_dir/jesterbox-menu" "$config_dir/menu"
-fi
+	if [ ! -e "$config_dir/$target" ] && [ -r "$template_dir/$template" ]; then
+		cp "$template_dir/$template" "$config_dir/$target"
+	fi
+}
+
+seed_config jesterbox-init init
+seed_config jesterbox-menu menu
+seed_config keys keys
 
 export FLUXLAND_CONFIG_DIR="$config_dir"
 exec "@bindir@/fluxland" "$@"

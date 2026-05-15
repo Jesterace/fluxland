@@ -451,6 +451,7 @@ install_data(
 install_data(
   jesterbox_init,
   jesterbox_menu,
+  'data/keys',
   install_dir: get_option('datadir') / 'fluxland' / 'jesterbox',
 )
 
