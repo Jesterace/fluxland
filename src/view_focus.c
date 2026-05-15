@@ -200,6 +200,7 @@ wm_unfocus_current(struct wm_server *server)
 	wm_protocols_update_kb_shortcuts_inhibitor(server, NULL);
 	server->focused_view = NULL;
 	wlr_seat_keyboard_notify_clear_focus(server->seat);
+	wm_toolbar_update_iconbar(server->toolbar);
 }
 
 void
@@ -394,6 +395,7 @@ wm_focus_update_for_cursor(struct wm_server *server,
 				keyboard->keycodes, keyboard->num_keycodes,
 				&keyboard->modifiers);
 		}
+		wm_toolbar_update_iconbar(server->toolbar);
 	}
 }
 

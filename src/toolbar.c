@@ -476,7 +476,9 @@ collect_iconbar_entries(struct wm_toolbar *toolbar)
 		}
 
 		/* Must have a valid xdg surface to be a real window */
-		if (!view->xdg_toplevel || !view->xdg_toplevel->base) {
+		if (!view->xdg_toplevel || !view->xdg_toplevel->base ||
+		    !view->xdg_toplevel->base->surface ||
+		    !view->xdg_toplevel->base->surface->mapped) {
 			continue;
 		}
 
@@ -515,6 +517,20 @@ collect_iconbar_entries(struct wm_toolbar *toolbar)
 		entry->focused = (view == server->focused_view);
 		entry->iconified = is_iconified;
 		count++;
+	}
+
+	/* Keep task button order stable even when focusing raises views. */
+	for (int i = 1; i < count; i++) {
+		struct wm_iconbar_entry entry = toolbar->ib_entries[i];
+		int j = i - 1;
+		while (j >= 0 && toolbar->ib_entries[j].view &&
+		       entry.view && toolbar->ib_entries[j].view->id > 0 &&
+		       entry.view->id > 0 &&
+		       toolbar->ib_entries[j].view->id > entry.view->id) {
+			toolbar->ib_entries[j + 1] = toolbar->ib_entries[j];
+			j--;
+		}
+		toolbar->ib_entries[j + 1] = entry;
 	}
 
 	toolbar->ib_count = count;
@@ -1191,14 +1207,8 @@ wm_toolbar_update_workspace(struct wm_toolbar *toolbar)
 		return;
 	}
 
-	/* Re-render workspace name tool if configured */
-	if (toolbar->ws_name_tool) {
-		compute_tool_layout(toolbar, toolbar->width);
-		render_tool(toolbar, toolbar->ws_name_tool);
-	}
-
-	/* Workspace change also affects the icon bar window list */
-	wm_toolbar_update_iconbar(toolbar);
+	toolbar->ib_cached_count = -1;
+	toolbar_render(toolbar);
 }
 
 /* Check if iconbar entries match the cached state */
@@ -1520,8 +1530,17 @@ wm_toolbar_handle_button(struct wm_toolbar *toolbar,
 						if (!view->scene_tree->node.enabled) {
 							deiconify_view(view);
 						} else {
-							wm_focus_view(view, NULL);
-							wm_view_raise(view);
+							struct wlr_xdg_surface *base =
+								view->xdg_toplevel ?
+								view->xdg_toplevel->base : NULL;
+							struct wlr_surface *surface =
+								base ? base->surface : NULL;
+							if (surface && surface->mapped) {
+								toolbar->server
+									->focus_user_initiated = true;
+								wm_focus_view(view, surface);
+								wm_view_raise(view);
+							}
 						}
 					}
 					return true;

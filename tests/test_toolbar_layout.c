@@ -121,7 +121,7 @@ struct wlr_scene_output {
 };
 
 struct wlr_surface {
-	int dummy;
+	bool mapped;
 };
 
 struct wlr_xdg_surface {
@@ -432,6 +432,7 @@ struct wm_server {
 	struct wm_config *config;
 	struct wm_style *style;
 	struct wm_view *focused_view;
+	bool focus_user_initiated;
 	struct wlr_cursor *cursor;
 	struct wlr_scene_tree *layer_top;
 	struct wl_event_loop *wl_event_loop;
@@ -475,6 +476,8 @@ static int g_timer_update_last_ms;
 static int g_focus_next_count;
 static int g_focus_prev_count;
 static int g_focus_view_count;
+static struct wm_view *g_focus_view_last_view;
+static struct wlr_surface *g_focus_view_last_surface;
 static int g_view_raise_count;
 
 /* --- Stub wlroots functions --- */
@@ -654,8 +657,8 @@ wm_focus_prev_view(struct wm_server *server)
 static void
 wm_focus_view(struct wm_view *view, struct wlr_surface *surface)
 {
-	(void)view;
-	(void)surface;
+	g_focus_view_last_view = view;
+	g_focus_view_last_surface = surface;
 	g_focus_view_count++;
 }
 
@@ -705,6 +708,8 @@ reset_globals(void)
 	g_focus_next_count = 0;
 	g_focus_prev_count = 0;
 	g_focus_view_count = 0;
+	g_focus_view_last_view = NULL;
+	g_focus_view_last_surface = NULL;
 	g_view_raise_count = 0;
 	g_timer_update_count = 0;
 	g_timer_update_last_ms = -1;
@@ -1058,13 +1063,16 @@ test_compute_tool_layout_empty(void)
 
 static struct wlr_xdg_toplevel test_toplevels[8];
 static struct wlr_xdg_surface test_xdg_surfaces[8];
+static struct wlr_surface test_surfaces[8];
 static struct wlr_scene_tree test_view_trees[8];
 
 static struct wm_view
 make_test_view(int idx, const char *title, struct wm_workspace *ws,
 	bool iconified)
 {
-	test_xdg_surfaces[idx].surface = NULL;
+	memset(&test_surfaces[idx], 0, sizeof(test_surfaces[idx]));
+	test_surfaces[idx].mapped = true;
+	test_xdg_surfaces[idx].surface = &test_surfaces[idx];
 	test_toplevels[idx].base = &test_xdg_surfaces[idx];
 	test_view_trees[idx].node.enabled = iconified ? 0 : 1;
 
@@ -1247,6 +1255,112 @@ test_collect_iconbar_sticky_views(void)
 	wl_list_remove(&v1.link);
 	free(toolbar.ib_entries);
 	printf("  PASS: collect_iconbar_sticky_views\n");
+}
+
+static void
+test_collect_iconbar_excludes_unmapped(void)
+{
+	reset_globals();
+	setup_test_server();
+
+	struct wm_workspace ws = {.name = "1", .index = 0};
+	wl_list_init(&ws.link);
+	test_server.current_workspace = &ws;
+
+	struct wm_view v1 = make_test_view(0, "Mapped", &ws, false);
+	struct wm_view v2 = make_test_view(1, "Unmapped", &ws, false);
+	test_surfaces[1].mapped = false;
+
+	wl_list_insert(&test_server.views, &v1.link);
+	wl_list_insert(&test_server.views, &v2.link);
+
+	struct wm_toolbar toolbar;
+	memset(&toolbar, 0, sizeof(toolbar));
+	toolbar.server = &test_server;
+	toolbar.iconbar_mode = WM_ICONBAR_MODE_WORKSPACE;
+
+	int count = collect_iconbar_entries(&toolbar);
+
+	assert(count == 1);
+	assert(toolbar.ib_entries[0].view == &v1);
+
+	wl_list_remove(&v1.link);
+	wl_list_remove(&v2.link);
+	free(toolbar.ib_entries);
+	printf("  PASS: collect_iconbar_excludes_unmapped\n");
+}
+
+static void
+test_collect_iconbar_keeps_minimized_mapped(void)
+{
+	reset_globals();
+	setup_test_server();
+
+	struct wm_workspace ws = {.name = "1", .index = 0};
+	wl_list_init(&ws.link);
+	test_server.current_workspace = &ws;
+
+	struct wm_view v1 = make_test_view(0, "Minimized", &ws, true);
+
+	wl_list_insert(&test_server.views, &v1.link);
+
+	struct wm_toolbar toolbar;
+	memset(&toolbar, 0, sizeof(toolbar));
+	toolbar.server = &test_server;
+	toolbar.iconbar_mode = WM_ICONBAR_MODE_WORKSPACE;
+
+	int count = collect_iconbar_entries(&toolbar);
+
+	assert(count == 1);
+	assert(toolbar.ib_entries[0].view == &v1);
+	assert(toolbar.ib_entries[0].iconified == true);
+
+	wl_list_remove(&v1.link);
+	free(toolbar.ib_entries);
+	printf("  PASS: collect_iconbar_keeps_minimized_mapped\n");
+}
+
+static void
+test_collect_iconbar_focus_state_updates(void)
+{
+	reset_globals();
+	setup_test_server();
+
+	struct wm_workspace ws = {.name = "1", .index = 0};
+	wl_list_init(&ws.link);
+	test_server.current_workspace = &ws;
+
+	struct wm_view v1 = make_test_view(0, "One", &ws, false);
+	struct wm_view v2 = make_test_view(1, "Two", &ws, false);
+	v1.id = 1;
+	v2.id = 2;
+
+	wl_list_insert(&test_server.views, &v2.link);
+	wl_list_insert(&test_server.views, &v1.link);
+
+	struct wm_toolbar toolbar;
+	memset(&toolbar, 0, sizeof(toolbar));
+	toolbar.server = &test_server;
+	toolbar.iconbar_mode = WM_ICONBAR_MODE_WORKSPACE;
+
+	test_server.focused_view = &v1;
+	assert(collect_iconbar_entries(&toolbar) == 2);
+	assert(toolbar.ib_entries[0].view == &v1);
+	assert(toolbar.ib_entries[1].view == &v2);
+	assert(toolbar.ib_entries[0].focused == true);
+	assert(toolbar.ib_entries[1].focused == false);
+
+	test_server.focused_view = &v2;
+	assert(collect_iconbar_entries(&toolbar) == 2);
+	assert(toolbar.ib_entries[0].view == &v1);
+	assert(toolbar.ib_entries[1].view == &v2);
+	assert(toolbar.ib_entries[0].focused == false);
+	assert(toolbar.ib_entries[1].focused == true);
+
+	wl_list_remove(&v1.link);
+	wl_list_remove(&v2.link);
+	free(toolbar.ib_entries);
+	printf("  PASS: collect_iconbar_focus_state_updates\n");
 }
 
 /* --- wm_toolbar_handle_scroll tests --- */
@@ -2035,8 +2149,12 @@ test_collect_iconbar_workspace_icons_mode(void)
 
 	struct wlr_xdg_toplevel tl;
 	struct wlr_xdg_surface base;
+	struct wlr_surface surface;
 	memset(&tl, 0, sizeof(tl));
 	memset(&base, 0, sizeof(base));
+	memset(&surface, 0, sizeof(surface));
+	surface.mapped = true;
+	base.surface = &surface;
 	tl.base = &base;
 
 	/* Iconified view on current workspace */
@@ -2673,6 +2791,54 @@ test_toolbar_update_iconbar(void)
 	printf("  PASS: toolbar_update_iconbar\n");
 }
 
+static void
+test_toolbar_update_iconbar_redraws_on_focus_change(void)
+{
+	reset_globals();
+	setup_test_server();
+	test_config.toolbar_tools = "iconbar";
+
+	struct wm_workspace ws;
+	memset(&ws, 0, sizeof(ws));
+	ws.name = "1";
+	ws.index = 0;
+	wl_list_insert(&test_server.workspaces, &ws.link);
+	test_server.current_workspace = &ws;
+	test_server.workspace_count = 1;
+
+	struct wm_view v1 = make_test_view(0, "One", &ws, false);
+	struct wm_view v2 = make_test_view(1, "Two", &ws, false);
+	v1.id = 1;
+	v2.id = 2;
+
+	wl_list_insert(&test_server.views, &v2.link);
+	wl_list_insert(&test_server.views, &v1.link);
+	test_server.focused_view = &v1;
+
+	struct wm_toolbar *toolbar = wm_toolbar_create(&test_server);
+	assert(toolbar != NULL);
+
+	wm_toolbar_update_iconbar(toolbar);
+	assert(toolbar->ib_entries[0].focused == true);
+	assert(toolbar->ib_entries[1].focused == false);
+
+	int before = g_scene_buffer_set_buffer_count;
+	test_server.focused_view = &v2;
+	wm_toolbar_update_iconbar(toolbar);
+
+	assert(g_scene_buffer_set_buffer_count > before);
+	assert(toolbar->ib_entries[0].view == &v1);
+	assert(toolbar->ib_entries[1].view == &v2);
+	assert(toolbar->ib_entries[0].focused == false);
+	assert(toolbar->ib_entries[1].focused == true);
+
+	wm_toolbar_destroy(toolbar);
+	wl_list_remove(&v1.link);
+	wl_list_remove(&v2.link);
+	wl_list_remove(&ws.link);
+	printf("  PASS: toolbar_update_iconbar_redraws_on_focus_change\n");
+}
+
 /* --- render_iconbar with actual entries --- */
 
 static void
@@ -2695,6 +2861,7 @@ test_toolbar_render_iconbar_with_entries(void)
 	struct wlr_surface surf;
 	memset(&xdg_surf, 0, sizeof(xdg_surf));
 	memset(&surf, 0, sizeof(surf));
+	surf.mapped = true;
 	xdg_surf.surface = &surf;
 
 	struct wlr_xdg_toplevel tl;
@@ -2734,6 +2901,102 @@ test_toolbar_render_iconbar_with_entries(void)
 	wm_toolbar_destroy(toolbar);
 	wl_list_remove(&ws.link);
 	printf("  PASS: toolbar_render_iconbar_with_entries\n");
+}
+
+static void
+test_toolbar_iconbar_click_uses_target_surface(void)
+{
+	reset_globals();
+	setup_test_server();
+	test_config.toolbar_tools = "iconbar";
+
+	struct wm_workspace ws;
+	memset(&ws, 0, sizeof(ws));
+	ws.name = "1";
+	ws.index = 0;
+	wl_list_insert(&test_server.workspaces, &ws.link);
+	test_server.current_workspace = &ws;
+	test_server.workspace_count = 1;
+
+	struct wm_view v1 = make_test_view(0, "One", &ws, false);
+	struct wm_view v2 = make_test_view(1, "Two", &ws, false);
+	v1.id = 1;
+	v2.id = 2;
+
+	wl_list_insert(&test_server.views, &v2.link);
+	wl_list_insert(&test_server.views, &v1.link);
+	test_server.focused_view = &v1;
+
+	struct wm_toolbar *toolbar = wm_toolbar_create(&test_server);
+	assert(toolbar != NULL);
+	assert(toolbar->ib_count == 2);
+
+	g_focus_view_count = 0;
+	g_focus_view_last_view = NULL;
+	g_focus_view_last_surface = NULL;
+	g_view_raise_count = 0;
+
+	struct wlr_box target = toolbar->ib_boxes[1];
+	double x = toolbar->x + toolbar->iconbar_tool->x +
+		target.x + target.width / 2.0;
+	double y = toolbar->y + target.height / 2.0;
+	bool consumed = wm_toolbar_handle_button(toolbar, x, y, 272);
+
+	assert(consumed == true);
+	assert(g_focus_view_count == 1);
+	assert(g_focus_view_last_view == &v2);
+	assert(g_focus_view_last_surface == test_xdg_surfaces[1].surface);
+	assert(g_view_raise_count == 1);
+
+	wm_toolbar_destroy(toolbar);
+	wl_list_remove(&v1.link);
+	wl_list_remove(&v2.link);
+	wl_list_remove(&ws.link);
+	printf("  PASS: toolbar_iconbar_click_uses_target_surface\n");
+}
+
+static void
+test_toolbar_iconbar_boxes_do_not_overlap(void)
+{
+	reset_globals();
+	setup_test_server();
+	test_config.toolbar_tools = "iconbar";
+
+	struct wm_workspace ws;
+	memset(&ws, 0, sizeof(ws));
+	ws.name = "1";
+	ws.index = 0;
+	wl_list_insert(&test_server.workspaces, &ws.link);
+	test_server.current_workspace = &ws;
+	test_server.workspace_count = 1;
+
+	struct wm_view views[4];
+	for (int i = 0; i < 4; i++) {
+		views[i] = make_test_view(i, "Window", &ws, false);
+		views[i].id = (uint32_t)(i + 1);
+		wl_list_insert(&test_server.views, &views[i].link);
+	}
+
+	struct wm_toolbar *toolbar = wm_toolbar_create(&test_server);
+	assert(toolbar != NULL);
+	assert(toolbar->ib_count == 4);
+
+	int last_end = 0;
+	for (int i = 0; i < toolbar->ib_count; i++) {
+		struct wlr_box *box = &toolbar->ib_boxes[i];
+		assert(box->width > 0);
+		assert(box->height == toolbar->height);
+		assert(box->x >= last_end);
+		assert(box->x + box->width <= toolbar->iconbar_tool->width);
+		last_end = box->x + box->width;
+	}
+
+	wm_toolbar_destroy(toolbar);
+	for (int i = 0; i < 4; i++) {
+		wl_list_remove(&views[i].link);
+	}
+	wl_list_remove(&ws.link);
+	printf("  PASS: toolbar_iconbar_boxes_do_not_overlap\n");
 }
 
 /* --- render_workspace_names: inactive workspace path --- */
@@ -2804,6 +3067,9 @@ main(void)
 	test_collect_iconbar_icons_mode();
 	test_collect_iconbar_no_icons_mode();
 	test_collect_iconbar_sticky_views();
+	test_collect_iconbar_excludes_unmapped();
+	test_collect_iconbar_keeps_minimized_mapped();
+	test_collect_iconbar_focus_state_updates();
 
 	/* scroll handling */
 	test_scroll_outside_bounds();
@@ -2863,7 +3129,10 @@ main(void)
 	test_toolbar_relayout_auto_hide_toggle();
 	test_toolbar_update_workspace();
 	test_toolbar_update_iconbar();
+	test_toolbar_update_iconbar_redraws_on_focus_change();
 	test_toolbar_render_iconbar_with_entries();
+	test_toolbar_iconbar_click_uses_target_surface();
+	test_toolbar_iconbar_boxes_do_not_overlap();
 	test_toolbar_render_workspace_inactive();
 
 	printf("All toolbar_layout tests passed.\n");
